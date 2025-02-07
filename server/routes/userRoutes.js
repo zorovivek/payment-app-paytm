@@ -1,9 +1,9 @@
 const express= require("express")
 const router= express.Router()
 const zod= require("zod")
-const User= require("../db/db")
+const {User}= require("../db/db")
 const jwt = require("jsonwebtoken")
-const JWT_SECRET= require("../config")
+const {JWT_SECRET}= require("../config")
 const signupSchema= zod.object({
     username:zod.email().string(),
     password:zod.string(),
@@ -38,7 +38,8 @@ router.post("/signup", async(req, res)=>{
         })
     }
     //created a token using jsonwebtoken
-    const token= jwt.sign(db_user._id,JWT_SECRET)  // db_user._id gives the id that has been given to that particular user in the database
+    const userId= db_user._id
+    const token= jwt.sign(userId,JWT_SECRET)  // db_user._id gives the id that has been given to that particular user in the database
     return res.status(400).json({
         msg:"signed up successfully",
         token: token
@@ -69,7 +70,8 @@ router.post("/signin", async (req, res)=>{
             mag:"wrong email or password"
         })
     }
-    const token = await jwt.sign(user._id,JWT_SECRET);   // creating token for future purposes
+    const userId= user._id
+    const token = await jwt.sign(userId,JWT_SECRET);   // creating token for future purposes
     return res.status(400).json({
         msg: "signin successfull",
         token: token
