@@ -1,5 +1,5 @@
 const mongoose= require("mongoose")
-mongoose.connect("mongodb+srv://zorovivek:m0nster1king@coursesellingwebistebac.8amyp.mongodb.net/Paytm")
+mongoose.connect(process.env.mongodb_url)
 const UserSchema= mongoose.Schema({
     username:{type: String, required: true, unique: true},
     password:{type: String, required: true},
