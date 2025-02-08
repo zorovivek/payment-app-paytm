@@ -4,6 +4,8 @@ const zod= require("zod")
 const {User}= require("../db/db")
 const jwt = require("jsonwebtoken")
 const {JWT_SECRET}= require("../config")
+const { authmiddleware } = require("../middlewares/middleware")
+
 const signupSchema= zod.object({
     username:zod.email().string(),
     password:zod.string(),
@@ -75,6 +77,69 @@ router.post("/signin", async (req, res)=>{
     return res.status(400).json({
         msg: "signin successfull",
         token: token
+    })
+})
+
+// updating the user data in the database
+// updationSchema
+const udpationSchema= zod.object({
+    username: zod.string().email().optional(),
+    password: zod.string().optional(),
+    firstName: zod.string().optional(),
+    lastName: zod.atring().optional()
+})
+router.put("/update",authmiddleware, async (req, res)=>{
+    const body= req.body;
+    const {success}=udpationSchema.safeParse(body);
+    if(!success){
+         return res.status(411).json({
+            msg:"invalid format of input"
+        })
+    }
+    const user=await  User.findOne({
+        _id:req.userId
+    })
+    if(user){
+        User.updateOne({
+            body
+        })
+        return res.status(400).json({
+            msg: "data updation successful"
+        })
+    }
+    else{
+        res.status(410).json({
+            msg:"error in updation"
+        })
+    }
+
+})
+
+// searching for other users present in the database so that you can send them money
+// note that this wilkl return a bunch of users whose names will match with the substring
+// we will be giving a query as "/aoi/v1/user/bulk?filter"  which will be used as a substring for searching the users
+
+router.get("/bulk", authmiddleware, async (req, res)=>{
+    const filter= req.query.filter||"";
+    const users= await User.find({
+        $or:[{
+            firstName:{
+                "$regex":filter
+            }
+        },{
+            lastName:{
+                "$regex":filter
+            }
+        }]
+    })
+    return res.json({
+        users: users.map(user=>({
+            username: user.username,
+            firstName:user.firstName,
+            lastName: user.lastName,
+            id: user._id
+
+        }))
     })
 })
 
