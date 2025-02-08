@@ -1,7 +1,7 @@
 const express= require("express")
 const router= express.Router()
 const zod= require("zod")
-const {User}= require("../db/db")
+const {User, Account}= require("../db/db")
 const jwt = require("jsonwebtoken")
 const {JWT_SECRET}= require("../config")
 const { authmiddleware } = require("../middlewares/middleware")
@@ -39,8 +39,14 @@ router.post("/signup", async(req, res)=>{
             lastName: data.lastName
         })
     }
-    //created a token using jsonwebtoken
+    // gave a random balance to any user during signup process
     const userId= db_user._id
+    await Account.create({
+        userId: userId,
+        balance: 1+Math.random()*10000
+    })
+    
+    //created a token using jsonwebtoken
     const token= jwt.sign(userId,JWT_SECRET)  // db_user._id gives the id that has been given to that particular user in the database
     return res.status(400).json({
         msg:"signed up successfully",
@@ -143,3 +149,4 @@ router.get("/bulk", authmiddleware, async (req, res)=>{
     })
 })
 
+module.exports= router;
