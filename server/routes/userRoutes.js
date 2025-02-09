@@ -1,5 +1,5 @@
 const express= require("express")
-const router= express.Router()
+const userRouter= express.Router()
 const zod= require("zod")
 const {User, Account}= require("../db/db")
 const jwt = require("jsonwebtoken")
@@ -7,14 +7,14 @@ const {JWT_SECRET}= require("../config")
 const { authmiddleware } = require("../middlewares/middleware")
 
 const signupSchema= zod.object({
-    username:zod.email().string(),
+    username:zod.string().email(),
     password:zod.string(),
     firstName: zod.string(),
-    lastName: Zod.string().optional()
+    lastName: zod.string().optional()
 })
-router.post("/signup", async(req, res)=>{
+userRouter.post("/signup", async(req, res)=>{
     const data= req.body
-    const {success}=signupSchema.safeparse(data)
+    const {success}=signupSchema.safeParse(data)
     // typeChecking using zod
     if(!success){
        return  res.status(411).json({
@@ -26,7 +26,7 @@ router.post("/signup", async(req, res)=>{
         const user= await User.findOne({
             username: data.username
         })
-        if(user._id){
+        if(user){
             return res.status(411).json({
                 msg:"user already exists"
             })
@@ -38,21 +38,22 @@ router.post("/signup", async(req, res)=>{
             firstName: data.firstName,
             lastName: data.lastName
         })
-    }
+    
     // gave a random balance to any user during signup process
     const userId= db_user._id
     await Account.create({
         userId: userId,
         balance: 1+Math.random()*10000
     })
+
     
     //created a token using jsonwebtoken
-    const token= jwt.sign(userId,JWT_SECRET)  // db_user._id gives the id that has been given to that particular user in the database
+    const token= jwt.sign({userId},JWT_SECRET)  // db_user._id gives the id that has been given to that particular user in the database
     return res.status(400).json({
         msg:"signed up successfully",
         token: token
     })
-
+    }
 })
 
 // signin route
@@ -61,7 +62,7 @@ const signinSchema= zod.object({
     username: zod.string().email(),
     password: zod.string()
 })
-router.post("/signin", async (req, res)=>{
+userRouter.post("/signin", async (req, res)=>{
     const data= req.body
     const {success}=signinSchema.safeParse(data);               // typechecking the inputs given by the user.
     if(!success){
@@ -79,7 +80,7 @@ router.post("/signin", async (req, res)=>{
         })
     }
     const userId= user._id
-    const token = await jwt.sign(userId,JWT_SECRET);   // creating token for future purposes
+    const token =jwt.sign({userId},JWT_SECRET);   // creating token for future purposes
     return res.status(400).json({
         msg: "signin successfull",
         token: token
@@ -88,36 +89,28 @@ router.post("/signin", async (req, res)=>{
 
 // updating the user data in the database
 // updationSchema
-const udpationSchema= zod.object({
+const updationSchema= zod.object({
     username: zod.string().email().optional(),
     password: zod.string().optional(),
     firstName: zod.string().optional(),
-    lastName: zod.atring().optional()
+    lastName: zod.string().optional()
 })
-router.put("/update",authmiddleware, async (req, res)=>{
+userRouter.put("/update",authmiddleware, async (req, res)=>{
     const body= req.body;
-    const {success}=udpationSchema.safeParse(body);
+    const {success}=updationSchema.safeParse(body);
     if(!success){
          return res.status(411).json({
             msg:"invalid format of input"
         })
     }
-    const user=await  User.findOne({
-        _id:req.userId
-    })
-    if(user){
-        User.updateOne({
-            body
-        })
+   
+    const user= await User.find({_id:req.userId})
+        await User.updateOne({_id:req.userId},body)
         return res.status(400).json({
-            msg: "data updation successful"
+            msg: "data updation successful",
+            user:user
         })
-    }
-    else{
-        res.status(410).json({
-            msg:"error in updation"
-        })
-    }
+    
 
 })
 
@@ -125,7 +118,7 @@ router.put("/update",authmiddleware, async (req, res)=>{
 // note that this wilkl return a bunch of users whose names will match with the substring
 // we will be giving a query as "/aoi/v1/user/bulk?filter"  which will be used as a substring for searching the users
 
-router.get("/bulk", authmiddleware, async (req, res)=>{
+userRouter.get("/bulk", authmiddleware, async (req, res)=>{
     const filter= req.query.filter||"";
     const users= await User.find({
         $or:[{
@@ -149,4 +142,4 @@ router.get("/bulk", authmiddleware, async (req, res)=>{
     })
 })
 
-module.exports= router;
+module.exports= userRouter;

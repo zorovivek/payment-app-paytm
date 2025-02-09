@@ -2,21 +2,22 @@ const express = require("express");
 const { authmiddleware } = require("../middlewares/middleware");
 const { Account } = require("../db/db");
 const { default: mongoose } = require("mongoose");
-const router= express.Router();
+const accountRouter= express.Router();
 
 // endpoint to get the balance of a user
-router.get("/balance", authmiddleware, async (req, res)=>{
+accountRouter.get("/balance", authmiddleware, async (req, res)=>{
     const userId= req.userId;
-    const amount= Account.findOne({
+    const amount= await Account.findOne({
         userId:userId
     })
+    
     return res.json({
         balance: amount.balance
     })
 })
 // money  transfer from one person to another person in the database
 
-router.put("/trasnfer", authmiddleware, async (req, res)=>{
+accountRouter.put("/transfer", authmiddleware, async (req, res)=>{
     const session = await mongoose.startSession();              //creating a session
     session.startTransaction();             // starting the transaction
     const {to,amount}= req.body;
@@ -28,7 +29,7 @@ router.put("/trasnfer", authmiddleware, async (req, res)=>{
             msg: "insufficient balance or account does not exist"
         })
     }
-    const toAccount= Account.findOne({
+    const toAccount= await Account.findOne({
         userId: to
     }).session(session);
     if(!toAccount){
@@ -38,7 +39,7 @@ router.put("/trasnfer", authmiddleware, async (req, res)=>{
         })
     }
     //performing transfer
-    await Account.updateOne({userId:account},{$inc:{balance:-amount}}).session(session);
+    const deducted= await Account.updateOne({userId:req.userId},{$inc:{balance:-amount}}).session(session);
     await Account.updateOne({userID: to},{$inc:{balance:+amount}}).session(session);
 
     // committing the transaction
@@ -48,4 +49,4 @@ router.put("/trasnfer", authmiddleware, async (req, res)=>{
     })
 })
 
-module.exports= router;
+module.exports= accountRouter;
